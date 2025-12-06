@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  db:
+    image: mysql:8.0
+    container_name: shipping_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: shipping_poc
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/sql/seed.sql:/docker-entrypoint-initdb.d/seed.sql
+    networks:
+      - shipping_network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 20s
+      retries: 10
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: shipping_backend
+    restart: always
+    environment:
+      DATABASE_URL: mysql+pymysql://root:root@localhost:3306/shipping_poc
+      CORS_ORIGINS: '["http://localhost:8000", "http://frontend:8501"]'
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - shipping_network
+    volumes:
+      - ./backend:/app
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: shipping_frontend
+    restart: always
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+    networks:
+      - shipping_network
+    volumes:
+      - ./frontend:/app
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+
+networks:
+  shipping_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
