@@ -1,20 +1,15 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+
 from app.database import get_db
-from app import models, schemas
+from app.models import Country
+from app.schemas import CountryResponse
 
-router = APIRouter(prefix="/countries", tags=["Countries"])
+router = APIRouter(
+    prefix="/countries",
+    tags=["Countries"]
+)
 
-
-@router.post("/", response_model=schemas.CountryResponse)
-def create_country(country: schemas.CountryCreate, db: Session = Depends(get_db)):
-    new_country = models.Country(**country.dict())
-    db.add(new_country)
-    db.commit()
-    db.refresh(new_country)
-    return new_country
-
-
-@router.get("/", response_model=list[schemas.CountryResponse])
-def list_countries(db: Session = Depends(get_db)):
-    return db.query(models.Country).all()
+@router.get("", response_model=list[CountryResponse])
+def get_countries(db: Session = Depends(get_db)):
+    return db.query(Country).all()
